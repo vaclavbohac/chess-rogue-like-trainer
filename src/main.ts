@@ -4,7 +4,7 @@ import "chessground/assets/chessground.cburnett.css";
 import "./style.css";
 
 import { Chess } from "chess.js";
-import { compileBook } from "./engine/book";
+import { blackReplyAt, compileBook } from "./engine/book";
 import { buildRepertoireTree } from "./engine/repertoire";
 import { makeRng } from "./engine/rng";
 import { Run } from "./engine/run";
@@ -95,6 +95,18 @@ function newRun(): void {
   });
   setFeedback("");
   render(false);
+
+  // Dev-only test hook: return the correct from/to for the current position so a
+  // headless driver can play a perfect run. Tree-shaken out of production builds.
+  if (import.meta.env.DEV) {
+    (window as unknown as { __solve?: () => { from: string; to: string } | null }).__solve =
+      () => {
+        const v = run.view();
+        if (v.status !== "awaiting-move") return null;
+        const reply = blackReplyAt(book, v.fen, v.tier);
+        return reply ? sanToFromTo(v.fen, reply.san) : null;
+      };
+  }
 }
 
 /** Bank the run's earned points and update the furthest-reach high-water mark (once). */
