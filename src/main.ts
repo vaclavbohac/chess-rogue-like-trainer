@@ -129,6 +129,13 @@ function onMove(from: string, to: string): void {
     return;
   }
   // mistake
+  if (res.revived) {
+    // Death Defiance just rescued an otherwise-fatal mistake — make the save loud,
+    // then fall through to the normal retry-in-place reveal (1 heart left).
+    setFeedback(`🛡️ Death Defiance! Saved with 1 heart — correct was ${res.bookMove}: ${res.idea}`, "good");
+    render(true);
+    return;
+  }
   setFeedback(`✗ correct was ${res.bookMove} — ${res.idea}`, "bad");
   if (res.dead) {
     bankRun();

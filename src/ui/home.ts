@@ -1,11 +1,13 @@
 import {
   BASE_HEARTS,
   MAX_HEART_LEVELS,
+  UPGRADE_CATALOG,
   buyUpgrade,
   saveProgress,
-  upgradeById,
   type KeyValueStore,
+  type OwnedUpgrades,
   type Progress,
+  type UpgradeCatalogEntry,
 } from "../engine/persistence";
 import { VENUES, venueName } from "../engine/venues";
 
@@ -18,7 +20,8 @@ export interface HomeCallbacks {
  * The Home screen (Hades' between-runs hub): title, points wallet, furthest-reach
  * high-water mark, a big Start Run button, and the Shop ("the Mirror") on the same
  * page. Framework-free DOM, re-rendered in place after each purchase so the wallet
- * and shop state stay in sync. Only the +1 Max Heart upgrade is stocked for now.
+ * and shop state stay in sync. The Shop stocks the whole upgrade catalog (+1 Max
+ * Heart, Tier Heal, Death Defiance); buying flows through the persistence helper.
  */
 export function renderHome(
   root: HTMLElement,
@@ -72,7 +75,7 @@ function venuePreviewHtml(reachedTier: number, cleared: boolean): string {
   }).join("");
 }
 
-/** Render the Shop's stock (currently only +1 Max Heart) and wire its Buy button. */
+/** Render the whole upgrade catalog and wire each item's Buy button. */
 function renderShop(
   root: HTMLElement,
   progress: Progress,
@@ -80,35 +83,64 @@ function renderShop(
   cb: HomeCallbacks,
 ): void {
   const list = root.querySelector<HTMLDivElement>("#shop-list")!;
-  const entry = upgradeById("maxHeart");
   const owned = progress.ownedUpgrades;
+
+  list.innerHTML = UPGRADE_CATALOG.map((entry) =>
+    shopItemHtml(entry, owned, progress.points),
+  ).join("");
+
+  for (const entry of UPGRADE_CATALOG) {
+    const buyBtn = list.querySelector<HTMLButtonElement>(`#buy-${entry.id}`)!;
+    buyBtn.addEventListener("click", () => {
+      if (buyUpgrade(progress, entry.id)) {
+        saveProgress(store, progress);
+        // Re-render the whole Home so the wallet and every shop item update together.
+        renderHome(root, progress, store, cb);
+      }
+    });
+  }
+}
+
+/**
+ * One shop row. The "owned" indicator differs by upgrade kind: +1 Max Heart is
+ * repeatable (shows a level / Maxed badge + current heart count), while Tier Heal
+ * and Death Defiance are one-shot (a plain "Owned" badge once bought). Buy buttons
+ * are disabled when the upgrade is unavailable or the wallet can't afford it.
+ */
+function shopItemHtml(
+  entry: UpgradeCatalogEntry,
+  owned: OwnedUpgrades,
+  points: number,
+): string {
   const cost = entry.cost(owned);
-  const maxed = !entry.available(owned);
-  const affordable = cost != null && progress.points >= cost;
+  const available = entry.available(owned);
+  const affordable = cost != null && points >= cost;
 
-  const status = maxed
-    ? `<span class="badge">Maxed</span>`
-    : `Lv ${owned.maxHeartLevel}/${MAX_HEART_LEVELS}`;
-  const btnLabel = maxed ? "Maxed" : `Buy · ${cost}`;
-  const disabled = maxed || !affordable;
+  let status: string;
+  let sub = "";
+  let soldLabel: string; // button label once no further purchase is possible
+  if (entry.id === "maxHeart") {
+    status = available
+      ? `Lv ${owned.maxHeartLevel}/${MAX_HEART_LEVELS}`
+      : `<span class="badge">Maxed</span>`;
+    sub = `<div class="shop-sub">Max hearts now: ${BASE_HEARTS + owned.maxHeartLevel}</div>`;
+    soldLabel = "Maxed";
+  } else {
+    status = available ? "" : `<span class="badge">Owned</span>`;
+    soldLabel = "Owned";
+  }
 
-  list.innerHTML = `
+  const btnLabel = available ? `Buy · ${cost}` : soldLabel;
+  const disabled = !available || !affordable;
+
+  return `
     <div class="shop-item">
       <div class="shop-meta">
         <div class="shop-name">${entry.name} <span class="shop-level">${status}</span></div>
         <div class="shop-desc">${entry.description}</div>
-        <div class="shop-sub">Max hearts now: ${BASE_HEARTS + owned.maxHeartLevel}</div>
+        ${sub}
       </div>
-      <button id="buy-maxHeart" class="btn btn-secondary" ${disabled ? "disabled" : ""}>${btnLabel}</button>
+      <button id="buy-${entry.id}" class="btn btn-secondary" ${disabled ? "disabled" : ""}>${btnLabel}</button>
     </div>
   `;
-
-  const buyBtn = list.querySelector<HTMLButtonElement>("#buy-maxHeart")!;
-  buyBtn.addEventListener("click", () => {
-    if (buyUpgrade(progress, "maxHeart")) {
-      saveProgress(store, progress);
-      // Re-render the whole Home so the wallet and shop state update together.
-      renderHome(root, progress, store, cb);
-    }
-  });
 }

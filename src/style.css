@@ -281,6 +281,12 @@ header h1 {
   letter-spacing: 0.06em;
 }
 
+#shop-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 .shop-item {
   display: flex;
   align-items: center;

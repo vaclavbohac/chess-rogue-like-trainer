@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
+import { Chess } from "chess.js";
 import {
   awardPoints,
   buyUpgrade,
@@ -13,6 +14,10 @@ import {
   MAX_HEART_LEVELS,
   type KeyValueStore,
 } from "./persistence";
+import { blackReplyAt, compileBook } from "./book";
+import { FIXTURE_TREE } from "./fixture";
+import { makeRng } from "./rng";
+import { Run } from "./run";
 
 /** In-memory KeyValueStore for tests. */
 function memStore(): KeyValueStore & { dump(): Record<string, string> } {
@@ -135,6 +140,48 @@ describe("effectiveUpgrades", () => {
       tierHeal: true,
       deathDefiance: true,
     });
+  });
+});
+
+describe("effectiveUpgrades flows into a Run", () => {
+  const book = compileBook(FIXTURE_TREE);
+
+  /** A legal Black move that is NOT the book move at `fen`. */
+  function wrongMove(fen: string, bookSan: string): string {
+    const after = new Chess(fen);
+    after.move(bookSan);
+    const bookFen = after.fen();
+    for (const m of new Chess(fen).moves()) {
+      const x = new Chess(fen);
+      x.move(m);
+      if (x.fen() !== bookFen) return m;
+    }
+    throw new Error("no wrong move available");
+  }
+
+  it("a Run built from purchased upgrades reflects every bought upgrade", () => {
+    const p = freshProgress();
+    awardPoints(p, 100);
+    buyUpgrade(p, "maxHeart"); // base 3 + 1 = 4
+    buyUpgrade(p, "tierHeal");
+    buyUpgrade(p, "deathDefiance");
+
+    const run = new Run(book, { rng: makeRng(3), upgrades: effectiveUpgrades(p) });
+    // +1 Max Heart and Death Defiance show up immediately in the run view.
+    expect(run.view().maxHearts).toBe(BASE_HEARTS + 1);
+    expect(run.view().deathDefianceAvailable).toBe(true);
+
+    // Tier Heal: burn a heart, then clear the first Tier — the boundary heals it back.
+    const fen0 = run.view().fen;
+    const book0 = blackReplyAt(book, fen0, run.view().tier)!.san;
+    run.submit(wrongMove(fen0, book0)); // 4 -> 3
+    run.submit(book0); // correct, retry-in-place
+    while (run.view().status === "awaiting-move" && !run.view().justCrossedTier) {
+      run.submit(blackReplyAt(book, run.view().fen, run.view().tier)!.san);
+    }
+    expect(run.view().justCrossedTier).toBe(true);
+    expect(run.view().hearts).toBe(4); // healed back to max at the Tier boundary
+    expect(run.view().tierHealApplied).toBe(true);
   });
 });
 
