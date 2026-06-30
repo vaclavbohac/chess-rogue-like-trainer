@@ -140,3 +140,80 @@ header h1 {
   color: var(--muted);
   margin: 0;
 }
+
+/* --- Home + Shop (the "Mirror") ------------------------------------------- */
+
+.home {
+  gap: 16px;
+}
+
+.wallet {
+  text-align: center;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+.wallet .coin { color: var(--accent); }
+
+.reach {
+  text-align: center;
+  color: var(--muted);
+  margin: 0;
+}
+
+.badge {
+  display: inline-block;
+  background: var(--good);
+  color: #fff;
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.btn-lg {
+  display: block;
+  width: 100%;
+  padding: 16px;
+  font-size: 1.15rem;
+}
+
+.btn-secondary {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.shop h2 {
+  font-size: 1rem;
+  color: var(--muted);
+  margin: 0 0 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.shop-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--surface);
+  border: 1px solid var(--surface-2);
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.shop-name { font-weight: 600; }
+.shop-level { color: var(--muted); font-size: 0.8rem; font-weight: 400; }
+.shop-desc { color: var(--muted); font-size: 0.85rem; margin-top: 2px; }
+.shop-sub { color: var(--accent); font-size: 0.8rem; margin-top: 4px; }
+
+.overlay-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}

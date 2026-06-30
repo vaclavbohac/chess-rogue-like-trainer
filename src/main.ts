@@ -18,14 +18,18 @@ import {
   updateFurthestReach,
 } from "./engine/persistence";
 import { Board } from "./ui/board";
+import { renderHome } from "./ui/home";
 
 const store = window.localStorage;
 const book = compileBook(buildRepertoireTree());
 const progress = loadProgress(store);
+const app = document.querySelector<HTMLDivElement>("#app")!;
 
-document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
+// Markup for the Game view. Built fresh on each entry so leaving to Home and coming
+// back (Start/Retry) always gets a clean board + overlay. The end overlay is a run
+// summary with Home (primary) and Retry actions — themes/interstitial land in P3.
+const GAME_HTML = `
   <div class="shell">
-    <header><h1>Caro-Kann Trainer</h1></header>
     <div class="hud">
       <span id="tier" class="pill"></span>
       <span id="enc" class="pill"></span>
@@ -38,7 +42,10 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
         <div class="overlay-card">
           <h2 id="overlay-title"></h2>
           <p id="overlay-sub"></p>
-          <button id="overlay-btn" class="btn"></button>
+          <div class="overlay-actions">
+            <button id="summary-home" class="btn">Home</button>
+            <button id="summary-retry" class="btn btn-secondary">Retry</button>
+          </div>
         </div>
       </div>
     </div>
@@ -48,23 +55,29 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
 `;
 
 const $ = <T extends HTMLElement>(sel: string) => document.querySelector<T>(sel)!;
-const tierEl = $("#tier");
-const encEl = $("#enc");
-const heartsEl = $("#hearts");
-const varEl = $("#variation");
-const feedbackEl = $("#feedback");
-const overlayEl = $<HTMLDivElement>("#overlay");
-const overlayTitle = $("#overlay-title");
-const overlaySub = $("#overlay-sub");
-const overlayBtn = $<HTMLButtonElement>("#overlay-btn");
 
-const board = new Board($("#board"), onMove);
-overlayBtn.addEventListener("click", newRun);
-
+let board: Board;
 let run: Run;
-newRun();
+let banked = false; // guard: a run's points are banked exactly once at its end
+
+// Start on Home (Hades-style hub); Start Run takes the player into the Game view.
+showHome();
+
+function showHome(): void {
+  renderHome(app, progress, store, { onStartRun: startGame });
+}
+
+/** Enter the Game view with a fresh board and a new Run. */
+function startGame(): void {
+  app.innerHTML = GAME_HTML;
+  board = new Board($("#board"), onMove);
+  $<HTMLButtonElement>("#summary-home").addEventListener("click", showHome);
+  $<HTMLButtonElement>("#summary-retry").addEventListener("click", startGame);
+  newRun();
+}
 
 function newRun(): void {
+  banked = false;
   const idx = startRun(progress);
   saveProgress(store, progress);
   run = new Run(book, {
@@ -79,8 +92,10 @@ function newRun(): void {
   render(false);
 }
 
-/** Bank the run's earned points and update the furthest-reach high-water mark. */
+/** Bank the run's earned points and update the furthest-reach high-water mark (once). */
 function bankRun(): void {
+  if (banked) return;
+  banked = true;
   const v = run.view();
   awardPoints(progress, v.points);
   updateFurthestReach(progress, { tier: v.tier, cleared: v.status === "won" });
@@ -113,12 +128,13 @@ function onMove(from: string, to: string): void {
 
 function render(animate = true): void {
   const v = run.view();
-  tierEl.textContent = v.venue;
-  encEl.textContent = `Encounter ${v.encounterNumber}/${v.gauntletSize} · ${v.points} pts`;
-  varEl.textContent = v.variation?.name ?? "";
-  heartsEl.textContent =
+  $("#tier").textContent = v.venue;
+  $("#enc").textContent = `Encounter ${v.encounterNumber}/${v.gauntletSize} · ${v.points} pts`;
+  $("#variation").textContent = v.variation?.name ?? "";
+  $("#hearts").textContent =
     "♥".repeat(v.hearts) + "♡".repeat(Math.max(0, v.maxHearts - v.hearts));
 
+  const overlayEl = $<HTMLDivElement>("#overlay");
   if (v.status === "awaiting-move") {
     overlayEl.hidden = true;
     board.awaitBlackMove(v.fen, animate, !!v.revealedMove);
@@ -128,26 +144,28 @@ function render(animate = true): void {
     }
   } else {
     board.freeze(v.fen);
-    showOverlay(v.status);
+    showSummary(v.status);
   }
 }
 
-function showOverlay(status: "won" | "dead"): void {
+/** End-of-run summary: points earned this run + furthest reach this run. */
+function showSummary(status: "won" | "dead"): void {
   const v = run.view();
-  overlayEl.hidden = false;
+  $<HTMLDivElement>("#overlay").hidden = false;
   if (status === "won") {
-    overlayTitle.textContent = "Run cleared! 🎉";
-    overlaySub.textContent = `You reached the final — every venue cleared. +${v.points} points banked (wallet: ${progress.points}).`;
-    overlayBtn.textContent = "Next run";
+    $("#overlay-title").textContent = "Run cleared! 🎉";
+    $("#overlay-sub").textContent =
+      `Reached the final — every venue cleared. +${v.points} points this run · wallet ${progress.points}.`;
   } else {
-    overlayTitle.textContent = "Out of hearts 💀";
-    overlaySub.textContent = `The run ends at ${v.venue}. +${v.points} points banked (wallet: ${progress.points}).`;
-    overlayBtn.textContent = "Try again";
+    $("#overlay-title").textContent = "Out of hearts 💀";
+    $("#overlay-sub").textContent =
+      `Reached ${v.venue}. +${v.points} points this run · wallet ${progress.points}.`;
   }
 }
 
 function setFeedback(text: string, kind: "good" | "bad" | "" = ""): void {
-  feedbackEl.textContent = text || " ";
+  const feedbackEl = $("#feedback");
+  feedbackEl.textContent = text || " ";
   feedbackEl.className = `feedback${kind ? " " + kind : ""}`;
 }
 
