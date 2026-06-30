@@ -1,4 +1,13 @@
+---
+status: superseded by ADR-0003
+---
+
 # Progressive depth ramp as the sole onboarding (no practice mode)
+
+> **Superseded by [ADR-0003](0003-hades-run-through-all-tiers.md).** The progressive
+> tier-unlock ramp is replaced by a Hades-style run that traverses all tiers each run,
+> with a points/shop economy. The *single pure-permadeath mode* and *learn-by-playing
+> via reveal-on-mistake* decisions below still hold; only the unlock mechanism changed.
 
 The trainer runs as a **single pure-permadeath mode** — there is no separate
 practice/free-play mode. The risk this creates (a learner being tested on lines they
