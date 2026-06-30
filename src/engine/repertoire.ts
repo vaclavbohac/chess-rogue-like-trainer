@@ -2038,7 +2038,7 @@ export const REPERTOIRE_SPECS: VariationSpec[] = [
   {
     "id": "panov",
     "name": "Panov-Botvinnik Attack",
-    "tier": 3,
+    "tier": 2,
     "whiteLine": [
       "e4",
       "d4",
@@ -2059,7 +2059,7 @@ export const REPERTOIRE_SPECS: VariationSpec[] = [
   {
     "id": "reti-nf3",
     "name": "2.Nf3 (Two Knights setup)",
-    "tier": 4,
+    "tier": 3,
     "whiteLine": [
       "e4",
       "Nf3"
@@ -2068,7 +2068,7 @@ export const REPERTOIRE_SPECS: VariationSpec[] = [
   {
     "id": "two-knights",
     "name": "Two Knights 2.Nc3",
-    "tier": 4,
+    "tier": 3,
     "whiteLine": [
       "e4",
       "Nc3"

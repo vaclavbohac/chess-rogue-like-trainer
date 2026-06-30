@@ -26,12 +26,12 @@ describe("repertoire compiles", () => {
     );
   });
 
-  it("assigns variations to difficulty tiers (the gauntlet's grouping bands)", () => {
+  it("assigns variations to difficulty tiers (2 per venue — the gauntlet's grouping bands)", () => {
     const perTier = (t: number) => book.variations.filter((v) => v.tier === t).length;
-    expect(perTier(1)).toBe(2); // advance, exchange
-    expect(perTier(2)).toBe(1); // classical
-    expect(perTier(3)).toBe(1); // panov
-    expect(perTier(4)).toBe(4); // fantasy, reti-nf3, two-knights, sideline-c4
+    expect(perTier(1)).toBe(2); // The Pub: advance, exchange
+    expect(perTier(2)).toBe(2); // The Chess Club: classical, panov
+    expect(perTier(3)).toBe(2); // The Tournament Hall: reti-nf3, two-knights
+    expect(perTier(4)).toBe(2); // The World Championship: fantasy, sideline-c4
   });
 });
 
