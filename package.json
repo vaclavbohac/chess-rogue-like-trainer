@@ -1,0 +1,24 @@
+{
+  "name": "chess-rogue-like-trainer",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "A roguelike trainer for drilling the Caro-Kann Defense (Black). Offline PWA.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "chess.js": "^1.4.0"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3",
+    "vite": "^8.1.1",
+    "vite-plugin-pwa": "^1.3.0",
+    "vitest": "^4.1.9"
+  }
+}

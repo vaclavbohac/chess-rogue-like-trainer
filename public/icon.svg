@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#312e2b" />
+  <!-- Simple knight glyph placeholder; replaced with real icons in M1. -->
+  <text x="50%" y="58%" font-size="320" text-anchor="middle" dominant-baseline="middle" fill="#f0d9b5">♞</text>
+</svg>

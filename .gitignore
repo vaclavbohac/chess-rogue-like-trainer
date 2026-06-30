@@ -5,8 +5,10 @@ node_modules/
 
 # Build output
 dist/
+dev-dist/
 build/
 .cache/
+*.tsbuildinfo
 
 # Logs
 *.log
