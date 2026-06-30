@@ -21,6 +21,7 @@ export function compileBook(tree: MoveNode[]): CompiledBook {
   const black = new Map<Fen, BlackReply>();
   const variations: VariationDef[] = [];
   const variationLine = new Map<string, San[]>();
+  const definingMoves = new Set<string>();
 
   function fenAfter(fenBefore: Fen, move: San): Fen {
     const c = new Chess(fenBefore);
@@ -59,6 +60,7 @@ export function compileBook(tree: MoveNode[]): CompiledBook {
         if (node.variation) {
           variations.push(node.variation);
           variationLine.set(node.variation.id, nextWhiteLine);
+          definingMoves.add(`${fenBefore}|${node.move}`);
         }
         const after = fenAfter(fenBefore, node.move); // validates legality (even leaves)
         if (node.children?.length) {
@@ -96,7 +98,7 @@ export function compileBook(tree: MoveNode[]): CompiledBook {
   }
 
   walk(tree, startFen, 1, []);
-  return { startFen, white, black, variations, variationLine };
+  return { startFen, white, black, variations, variationLine, definingMoves };
 }
 
 /** White options available at `fen`, filtered to those unlocked at `tier`. */

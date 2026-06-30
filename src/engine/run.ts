@@ -124,7 +124,16 @@ export class Run {
     if (this.whiteMovesPlayed < forced.length) {
       san = forced[this.whiteMovesPlayed]!;
     } else {
-      san = weightedPick(options, (o) => o.weight, this.rng).san;
+      // Past our forced line: never wander into another variation's defining move
+      // (those are reached only via their own encounter — coverage guarantee).
+      const pickable = options.filter(
+        (o) => !this.book.definingMoves.has(`${this.fen}|${o.san}`),
+      );
+      if (pickable.length === 0) {
+        this.clearEncounter(); // only foreign branches remain -> out of book here
+        return;
+      }
+      san = weightedPick(pickable, (o) => o.weight, this.rng).san;
     }
 
     const applied = tryMove(this.fen, san);

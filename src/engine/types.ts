@@ -65,4 +65,11 @@ export interface CompiledBook {
   variations: VariationDef[];
   /** variation id -> the forced sequence of White SAN moves that defines it. */
   variationLine: Map<string, San[]>;
+  /**
+   * Set of `${fenBefore}|${san}` for every variation's defining White move. Used by
+   * the run engine to keep an encounter from drifting into a *different* variation's
+   * main branch during weighted-random play (variations are entered only via their
+   * own encounter — preserving the coverage guarantee).
+   */
+  definingMoves: Set<string>;
 }

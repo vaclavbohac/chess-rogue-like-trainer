@@ -1,5 +1,5 @@
 import { compileBook } from "./engine/book";
-import { FIXTURE_TREE } from "./engine/fixture";
+import { buildRepertoireTree, MAX_TIER } from "./engine/repertoire";
 import { makeRng } from "./engine/rng";
 import { Run } from "./engine/run";
 import {
@@ -18,9 +18,9 @@ const progress = loadProgress(store);
 const runIndex = startRun(progress);
 saveProgress(store, progress);
 
-const book = compileBook(FIXTURE_TREE);
+const book = compileBook(buildRepertoireTree());
 const run = new Run(book, {
-  tier: progress.tier,
+  tier: Math.min(progress.tier, MAX_TIER),
   rng: makeRng(runIndex || 1),
   onDecision: (e) => {
     recordDecision(progress, e);
