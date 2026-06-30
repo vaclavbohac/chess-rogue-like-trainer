@@ -60,10 +60,16 @@ const GAME_HTML = `
 const $ = <T extends HTMLElement>(sel: string) => document.querySelector<T>(sel)!;
 const VENUE_THEME_CLASSES = VENUES.map((v) => v.themeClass);
 
+// White "thinking" delay before its reply animates, so it feels like a real opponent.
+const WHITE_MIN_MS = 450;
+const WHITE_JITTER_MS = 450;
+const whiteDelay = () => WHITE_MIN_MS + Math.random() * WHITE_JITTER_MS;
+
 let board: Board;
 let run: Run;
 let banked = false; // guard: a run's points are banked exactly once at its end
 let showingInterstitial = false; // UI mode: a tier-boundary pause is on screen
+let whiteThinking = false; // UI mode: White's reply is pending behind its delay
 
 // Start on Home (Hades-style hub); Start Run takes the player into the Game view.
 showHome();
@@ -83,6 +89,7 @@ function startGame(): void {
 function newRun(): void {
   banked = false;
   showingInterstitial = false;
+  whiteThinking = false;
   const idx = startRun(progress);
   saveProgress(store, progress);
   run = new Run(book, {
@@ -120,8 +127,8 @@ function bankRun(): void {
 }
 
 function onMove(from: string, to: string): void {
-  // The board is frozen behind the Interstitial, but guard anyway.
-  if (showingInterstitial || run.view().status !== "awaiting-move") return;
+  // Ignore input while the Interstitial is up or White is "thinking".
+  if (showingInterstitial || whiteThinking || run.view().status !== "awaiting-move") return;
   const res = run.submit({ from, to, promotion: "q" });
 
   if (res.type === "illegal") {
@@ -137,7 +144,19 @@ function onMove(from: string, to: string): void {
       render(false); // board has already advanced into the new venue's first encounter
       return;
     }
-    render(!res.encounterCleared); // snap to a fresh board when a new encounter begins
+    // Win or a new encounter: snap (the transition is its own beat, no White "think").
+    if (res.runWon || res.encounterCleared) {
+      render(false);
+      return;
+    }
+    // Normal reply within the encounter: the board still shows the player's move; pause,
+    // then animate White's reply so it feels like a real opponent moving.
+    whiteThinking = true;
+    board.lock();
+    window.setTimeout(() => {
+      whiteThinking = false;
+      render(true);
+    }, whiteDelay());
     return;
   }
   // mistake

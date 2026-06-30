@@ -38,6 +38,11 @@ export class Board {
     });
   }
 
+  /** Disable interaction without changing the position (e.g. while White "thinks"). */
+  lock(): void {
+    this.cg.set({ movable: { color: undefined, dests: new Map() } });
+  }
+
   /** Lock the board (end-of-run states). */
   freeze(fen: string): void {
     this.cg.set({
