@@ -64,6 +64,12 @@ export interface RunView {
    * the final Tier (that is a run win, shown as a summary instead).
    */
   justCrossedTier: boolean;
+  /**
+   * True alongside `justCrossedTier` when the Tier Heal upgrade actually restored a
+   * heart at this boundary (i.e. it wasn't already full) — the Interstitial's cue to
+   * show the heal note. Cleared together with `justCrossedTier` on the next move.
+   */
+  tierHealApplied: boolean;
 }
 
 export type SubmitResult =
@@ -106,6 +112,7 @@ export class Run {
   private encounterIndex = 0;
   private status: RunStatus = "awaiting-move";
   private justCrossedTier = false;
+  private tierHealApplied = false;
 
   private fen: Fen;
   private whiteMovesPlayed = 0;
@@ -223,7 +230,11 @@ export class Run {
     this.encounterIndex++;
     if (lastOfTier) {
       // Crossing into the next Tier: heal (if owned) and flag the Interstitial.
-      if (this.tierHeal) this.hearts = Math.min(this.hearts + 1, this.maxHearts);
+      if (this.tierHeal) {
+        const before = this.hearts;
+        this.hearts = Math.min(this.hearts + 1, this.maxHearts);
+        this.tierHealApplied = this.hearts > before; // only note an actual heal
+      }
       this.justCrossedTier = true;
     }
     this.beginEncounter();
@@ -236,6 +247,7 @@ export class Run {
     }
     // A move acknowledges any just-crossed Tier (the Interstitial is dismissed).
     this.justCrossedTier = false;
+    this.tierHealApplied = false;
 
     const reply = blackReplyAt(this.book, this.fen, this.bookTier);
     if (!reply) {
@@ -338,6 +350,7 @@ export class Run {
       points: this.points,
       deathDefianceAvailable: this.deathDefianceAvailable,
       justCrossedTier: this.justCrossedTier,
+      tierHealApplied: this.tierHealApplied,
     };
   }
 }

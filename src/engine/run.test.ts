@@ -185,6 +185,7 @@ describe("Run — Tier Heal upgrade", () => {
     expect(run.view().justCrossedTier).toBe(true);
     expect(run.view().tier).toBe(2);
     expect(run.view().hearts).toBe(4); // 3 + tier heal, back to max
+    expect(run.view().tierHealApplied).toBe(true); // Interstitial heal note cue
   });
 
   it("does not heal beyond max hearts", () => {
@@ -197,6 +198,7 @@ describe("Run — Tier Heal upgrade", () => {
     }
     expect(run.view().justCrossedTier).toBe(true);
     expect(run.view().hearts).toBe(3); // already full, capped
+    expect(run.view().tierHealApplied).toBe(false); // no actual heal -> no note
   });
 });
 

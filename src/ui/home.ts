@@ -7,7 +7,7 @@ import {
   type KeyValueStore,
   type Progress,
 } from "../engine/persistence";
-import { venueName } from "../engine/venues";
+import { VENUES, venueName } from "../engine/venues";
 
 export interface HomeCallbacks {
   /** Begin a new Run with the player's current effective upgrades. */
@@ -37,6 +37,11 @@ export function renderHome(
       <div class="wallet"><span class="coin">◆</span> ${progress.points} points</div>
       <p class="reach">${reach}</p>
       <button id="start-run" class="btn btn-lg">Start Run</button>
+      <section class="venues">
+        <h2>The Gauntlet</h2>
+        <div class="venue-preview">${venuePreviewHtml(fr.tier, fr.cleared)}</div>
+        <p class="note">Every run runs all four venues, easiest first.</p>
+      </section>
       <section class="shop">
         <h2>Shop</h2>
         <div id="shop-list"></div>
@@ -47,6 +52,24 @@ export function renderHome(
 
   root.querySelector<HTMLButtonElement>("#start-run")!.addEventListener("click", cb.onStartRun);
   renderShop(root, progress, store, cb);
+}
+
+/**
+ * Preview the four venues (each in its own theme palette via the `themeClass`),
+ * marking how far the player has reached. A CSS-only mini board square sits in each
+ * card so the palettes read at a glance — no run is needed to see the venues.
+ */
+function venuePreviewHtml(reachedTier: number, cleared: boolean): string {
+  return VENUES.map((v) => {
+    const reached = v.tier <= reachedTier;
+    const mark = cleared && v.tier === VENUES[VENUES.length - 1]!.tier ? " ✓" : "";
+    return `
+      <div class="venue-card ${v.themeClass} ${reached ? "reached" : ""}">
+        <div class="venue-board" aria-hidden="true"></div>
+        <div class="venue-name">${v.name}${mark}</div>
+      </div>
+    `;
+  }).join("");
 }
 
 /** Render the Shop's stock (currently only +1 Max Heart) and wire its Buy button. */

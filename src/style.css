@@ -7,15 +7,77 @@
   --good: #6f9a2e;
   --bad: #c0392b;
   --accent: #759900;
+  --on-accent: #fff; /* readable text color on top of --accent */
+  /* Default board squares (the neutral hub / fallback). Venue themes override. */
+  --board-light: #f0d9b5;
+  --board-dark: #b58863;
 }
 
 * { box-sizing: border-box; }
 
 html, body {
   margin: 0;
-  background: var(--bg);
+  min-height: 100dvh;
+  background: var(--bg) fixed;
   color: var(--text);
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  transition: background 240ms ease; /* gentle cross-fade when crossing a venue */
+}
+
+/* --- Venue themes (CSS-only: palette + board square colors, no raster art) ----
+   Each class sets the page background, accent, on-accent text, and the two board
+   square colors. Applied to <body> in the Game/Interstitial, and to each preview
+   card on Home. Source of truth for the class names: src/engine/venues.ts. */
+
+.venue-pub {
+  --bg: radial-gradient(120% 90% at 50% 0%, #3a2a1c 0%, #241812 70%);
+  --surface: #392b1f;
+  --surface-2: #4a3826;
+  --accent: #d99a2b; /* amber */
+  --on-accent: #2a1c0c;
+  --board-light: #e8c896;
+  --board-dark: #9c6b3a; /* warm wood */
+}
+
+.venue-club {
+  --bg: radial-gradient(120% 90% at 50% 0%, #1f3d2b 0%, #122017 70%);
+  --surface: #20392a;
+  --surface-2: #2c4a37;
+  --accent: #e7dfbf; /* cream */
+  --on-accent: #25301c;
+  --board-light: #eeeed2; /* cream */
+  --board-dark: #6f9b54; /* club green */
+}
+
+.venue-hall {
+  --bg: radial-gradient(120% 90% at 50% 0%, #2c343a 0%, #181d21 70%);
+  --surface: #2d353b;
+  --surface-2: #3a444b;
+  --accent: #3f9f74; /* baize green */
+  --on-accent: #fff;
+  --board-light: #c3ccce; /* cool grey */
+  --board-dark: #4f7a63; /* green baize */
+}
+
+.venue-final {
+  --bg: radial-gradient(120% 90% at 50% 0%, #1b274a 0%, #0c1224 70%);
+  --surface: #1e2a4d;
+  --surface-2: #2b3a63;
+  --accent: #d4af37; /* gold */
+  --on-accent: #1a1206;
+  --board-light: #e7e4dc; /* marble */
+  --board-dark: #34487e; /* navy */
+}
+
+/* Themed board squares: a pure-CSS conic checkerboard tinted by the venue's
+   palette, overriding chessground.brown.css. Two colors, eight files. */
+cg-board {
+  background-color: var(--board-light);
+  background-image: repeating-conic-gradient(
+    var(--board-dark) 0% 25%,
+    var(--board-light) 0% 50%
+  );
+  background-size: 25% 25%;
 }
 
 .shell {
@@ -37,9 +99,27 @@ header h1 {
 
 .hud {
   display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hud-row {
+  display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+}
+
+.hud-progress {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+
+.venue-label {
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--text);
 }
 
 .pill {
@@ -49,6 +129,11 @@ header h1 {
   font-size: 0.85rem;
   color: var(--muted);
   white-space: nowrap;
+}
+
+.pill-accent {
+  color: var(--accent);
+  font-weight: 600;
 }
 
 .hearts {
@@ -111,7 +196,7 @@ header h1 {
 
 .btn {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   border: none;
   border-radius: 8px;
   padding: 10px 22px;
@@ -216,4 +301,111 @@ header h1 {
   display: flex;
   gap: 10px;
   justify-content: center;
+}
+
+/* --- Interstitial (between-venue pause) ----------------------------------- */
+
+.inter-sub {
+  margin: 0 0 12px;
+  color: var(--muted);
+}
+.inter-sub strong { color: var(--text); }
+
+.tier-path {
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+}
+
+.tier-path .leg {
+  position: relative;
+  padding-left: 18px;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+.tier-path .leg::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 0.45em;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--surface-2);
+}
+.tier-path .leg.done { color: var(--text); }
+.tier-path .leg.done::before { background: var(--good); }
+.tier-path .leg.next {
+  color: var(--accent);
+  font-weight: 700;
+}
+.tier-path .leg.next::before {
+  background: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.inter-stats {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.heal-note {
+  margin: 0 0 14px;
+  color: var(--good);
+  font-size: 0.85rem;
+}
+
+/* --- Home: venue preview -------------------------------------------------- */
+
+.venues h2 {
+  font-size: 1rem;
+  color: var(--muted);
+  margin: 0 0 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.venue-preview {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.venue-card {
+  background: var(--bg);
+  border: 1px solid var(--surface-2);
+  border-radius: 10px;
+  padding: 8px 6px;
+  text-align: center;
+  opacity: 0.55; /* not-yet-reached venues read as dimmed */
+}
+.venue-card.reached {
+  opacity: 1;
+  border-color: var(--accent);
+}
+
+.venue-board {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 4px;
+  background-color: var(--board-light);
+  background-image: repeating-conic-gradient(
+    var(--board-dark) 0% 25%,
+    var(--board-light) 0% 50%
+  );
+  background-size: 50% 50%; /* a 2x2 mini-board is enough to read the palette */
+  margin-bottom: 6px;
+}
+
+.venue-name {
+  font-size: 0.72rem;
+  line-height: 1.2;
+  color: var(--text);
 }
