@@ -129,7 +129,12 @@ export class Run {
 
     const applied = tryMove(this.fen, san);
     if (!applied) {
-      throw new Error(`Book bug: illegal White move ${san} at ${this.fen}`);
+      const how =
+        this.whiteMovesPlayed < forced.length ? "forced" : "weighted-random";
+      throw new Error(
+        `Book bug: ${how} White move "${san}" (variation "${variation.id}") ` +
+          `is illegal at ${this.fen}`,
+      );
     }
     this.fen = applied.fen;
     this.whiteMovesPlayed++;

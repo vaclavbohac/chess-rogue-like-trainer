@@ -55,6 +55,100 @@ describe("compileBook", () => {
   });
 });
 
+describe("transpositions", () => {
+  // 1.e4 c6 2.Nf3 d5 3.Nc3 and 1.e4 c6 2.Nc3 d5 3.Nf3 reach the SAME Black-to-move
+  // FEN. After the (agreeing) reply ...dxe4 they reach the same White-to-move FEN too.
+  const converged = fenAfter("e4", "c6", "Nf3", "d5", "Nc3");
+  const afterDxe4 = fenAfter("e4", "c6", "Nf3", "d5", "Nc3", "dxe4");
+
+  it("merges agreeing transpositions and unions White options", () => {
+    const tree: MoveNode[] = [
+      {
+        move: "e4",
+        children: [
+          {
+            move: "c6",
+            children: [
+              {
+                move: "Nf3",
+                children: [
+                  {
+                    move: "d5",
+                    children: [
+                      {
+                        move: "Nc3",
+                        children: [
+                          { move: "dxe4", idea: "x", children: [{ move: "Nxe4" }] },
+                        ],
+                      },
+                    ],
+                  },
+                ],
+              },
+              {
+                move: "Nc3",
+                children: [
+                  {
+                    move: "d5",
+                    children: [
+                      {
+                        move: "Nf3",
+                        children: [
+                          { move: "dxe4", idea: "y", children: [{ move: "d3" }] },
+                        ],
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    ];
+    const b = compileBook(tree);
+    expect(b.black.get(converged)?.san).toBe("dxe4");
+    // White options from BOTH paths are unioned, not overwritten.
+    expect(b.white.get(afterDxe4)?.map((o) => o.san).sort()).toEqual(["Nxe4", "d3"].sort());
+  });
+
+  it("throws on a conflicting Black reply at a transposed position", () => {
+    const tree: MoveNode[] = [
+      {
+        move: "e4",
+        children: [
+          {
+            move: "c6",
+            children: [
+              { move: "Nf3", children: [{ move: "d5", children: [{ move: "Nc3", children: [{ move: "dxe4", idea: "x" }] }] }] },
+              { move: "Nc3", children: [{ move: "d5", children: [{ move: "Nf3", children: [{ move: "Bg4", idea: "y" }] }] }] },
+            ],
+          },
+        ],
+      },
+    ];
+    expect(() => compileBook(tree)).toThrow(/Transposition conflict \(Black\)/);
+  });
+
+  it("throws when a transposed White option disagrees on weight", () => {
+    const tree: MoveNode[] = [
+      {
+        move: "e4",
+        children: [
+          {
+            move: "c6",
+            children: [
+              { move: "Nf3", children: [{ move: "d5", children: [{ move: "Nc3", children: [{ move: "dxe4", idea: "x", children: [{ move: "Nxe4", weight: 2 }] }] }] }] },
+              { move: "Nc3", children: [{ move: "d5", children: [{ move: "Nf3", children: [{ move: "dxe4", idea: "y", children: [{ move: "Nxe4", weight: 5 }] }] }] }] },
+            ],
+          },
+        ],
+      },
+    ];
+    expect(() => compileBook(tree)).toThrow(/Transposition conflict \(White\)/);
+  });
+});
+
 describe("tier gating", () => {
   it("hides Classical at Tier 1 but shows it at Tier 2", () => {
     const afterD5 = fenAfter("e4", "c6", "d4", "d5");

@@ -37,10 +37,23 @@ export function compileBook(tree: MoveNode[]): CompiledBook {
     const sideToMove = new Chess(fenBefore).turn();
 
     if (sideToMove === "w") {
-      const options: WhiteOption[] = [];
+      // Union options across transposing paths (keyed by FEN). Overlapping SANs
+      // must agree on weight/tier; otherwise it's an authoring conflict.
+      const options: WhiteOption[] = white.get(fenBefore) ?? [];
       for (const node of nodes) {
         const tier = node.tier ?? node.variation?.tier ?? parentTier;
-        options.push({ san: node.move, weight: node.weight ?? 1, tier });
+        const weight = node.weight ?? 1;
+        const existing = options.find((o) => o.san === node.move);
+        if (existing) {
+          if (existing.weight !== weight || existing.tier !== tier) {
+            throw new Error(
+              `Transposition conflict (White) at ${fenBefore}: "${node.move}" has weight/tier ` +
+                `${existing.weight}/${existing.tier} vs ${weight}/${tier}`,
+            );
+          }
+        } else {
+          options.push({ san: node.move, weight, tier });
+        }
 
         const nextWhiteLine = [...whiteLine, node.move];
         if (node.variation) {
@@ -62,8 +75,20 @@ export function compileBook(tree: MoveNode[]): CompiledBook {
       }
       const node = nodes[0]!;
       const tier = node.tier ?? parentTier;
-      black.set(fenBefore, { san: node.move, idea: node.idea ?? "", tier });
       const after = fenAfter(fenBefore, node.move); // validates legality (even leaves)
+      // Transpositions may revisit this FEN: a different canonical reply is a
+      // conflict (would silently teach a wrong move); an agreeing one is fine.
+      const existing = black.get(fenBefore);
+      if (existing) {
+        if (fenAfter(fenBefore, existing.san) !== after) {
+          throw new Error(
+            `Transposition conflict (Black) at ${fenBefore}: ` +
+              `"${existing.san}" vs "${node.move}"`,
+          );
+        }
+      } else {
+        black.set(fenBefore, { san: node.move, idea: node.idea ?? "", tier });
+      }
       if (node.children?.length) {
         walk(node.children, after, tier, whiteLine);
       }
