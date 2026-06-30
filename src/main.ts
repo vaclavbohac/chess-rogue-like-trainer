@@ -5,15 +5,17 @@ import "./style.css";
 
 import { Chess } from "chess.js";
 import { compileBook } from "./engine/book";
-import { buildRepertoireTree, MAX_TIER } from "./engine/repertoire";
+import { buildRepertoireTree } from "./engine/repertoire";
 import { makeRng } from "./engine/rng";
-import { DEFAULT_HEARTS, Run } from "./engine/run";
+import { Run } from "./engine/run";
 import {
+  awardPoints,
+  effectiveUpgrades,
   loadProgress,
   recordDecision,
   saveProgress,
   startRun,
-  unlockNextTier,
+  updateFurthestReach,
 } from "./engine/persistence";
 import { Board } from "./ui/board";
 
@@ -66,8 +68,8 @@ function newRun(): void {
   const idx = startRun(progress);
   saveProgress(store, progress);
   run = new Run(book, {
-    tier: Math.min(progress.tier, MAX_TIER),
     rng: makeRng(idx),
+    upgrades: effectiveUpgrades(progress),
     onDecision: (e) => {
       recordDecision(progress, e);
       saveProgress(store, progress);
@@ -75,6 +77,14 @@ function newRun(): void {
   });
   setFeedback("");
   render(false);
+}
+
+/** Bank the run's earned points and update the furthest-reach high-water mark. */
+function bankRun(): void {
+  const v = run.view();
+  awardPoints(progress, v.points);
+  updateFurthestReach(progress, { tier: v.tier, cleared: v.status === "won" });
+  saveProgress(store, progress);
 }
 
 function onMove(from: string, to: string): void {
@@ -86,10 +96,7 @@ function onMove(from: string, to: string): void {
     return;
   }
   if (res.type === "correct") {
-    if (res.runWon) {
-      unlockNextTier(progress, MAX_TIER); // unlock once, on the winning move
-      saveProgress(store, progress);
-    }
+    if (res.runWon) bankRun(); // bank once, on the winning move
     setFeedback(res.idea, "good");
     render(!res.encounterCleared); // snap to a fresh board when a new encounter begins
     return;
@@ -97,6 +104,7 @@ function onMove(from: string, to: string): void {
   // mistake
   setFeedback(`✗ correct was ${res.bookMove} — ${res.idea}`, "bad");
   if (res.dead) {
+    bankRun();
     render(false);
   } else {
     render(true); // animate the wrong piece back, then show the hint arrow
@@ -105,11 +113,11 @@ function onMove(from: string, to: string): void {
 
 function render(animate = true): void {
   const v = run.view();
-  tierEl.textContent = `Tier ${v.tier}`;
-  encEl.textContent = `Encounter ${v.encounterNumber}/${v.gauntletSize}`;
+  tierEl.textContent = v.venue;
+  encEl.textContent = `Encounter ${v.encounterNumber}/${v.gauntletSize} · ${v.points} pts`;
   varEl.textContent = v.variation?.name ?? "";
   heartsEl.textContent =
-    "♥".repeat(v.hearts) + "♡".repeat(Math.max(0, DEFAULT_HEARTS - v.hearts));
+    "♥".repeat(v.hearts) + "♡".repeat(Math.max(0, v.maxHearts - v.hearts));
 
   if (v.status === "awaiting-move") {
     overlayEl.hidden = true;
@@ -125,17 +133,15 @@ function render(animate = true): void {
 }
 
 function showOverlay(status: "won" | "dead"): void {
+  const v = run.view();
   overlayEl.hidden = false;
   if (status === "won") {
-    const advanced = run.tier < MAX_TIER;
     overlayTitle.textContent = "Run cleared! 🎉";
-    overlaySub.textContent = advanced
-      ? `You survived the gauntlet. Tier ${run.tier + 1} unlocked.`
-      : `You cleared the top tier — the whole repertoire.`;
+    overlaySub.textContent = `You reached the final — every venue cleared. +${v.points} points banked (wallet: ${progress.points}).`;
     overlayBtn.textContent = "Next run";
   } else {
     overlayTitle.textContent = "Out of hearts 💀";
-    overlaySub.textContent = "The run is over. Back to the first encounter.";
+    overlaySub.textContent = `The run ends at ${v.venue}. +${v.points} points banked (wallet: ${progress.points}).`;
     overlayBtn.textContent = "Try again";
   }
 }

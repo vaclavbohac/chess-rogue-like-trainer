@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { Chess } from "chess.js";
 import { blackReplyAt, compileBook } from "./book";
-import { buildRepertoireTree, MAX_TIER, REPERTOIRE_SPECS } from "./repertoire";
+import { buildRepertoireTree, REPERTOIRE_SPECS } from "./repertoire";
 import { makeRng } from "./rng";
 import { Run } from "./run";
 
@@ -16,7 +16,7 @@ const fenAfterCxd5 = (() => {
 })();
 
 function correct(run: Run): string {
-  return blackReplyAt(book, run.view().fen, run.tier)!.san;
+  return blackReplyAt(book, run.view().fen, run.view().tier)!.san;
 }
 
 describe("repertoire compiles", () => {
@@ -26,27 +26,30 @@ describe("repertoire compiles", () => {
     );
   });
 
-  it("unlocks variations cumulatively by tier", () => {
-    const atTier = (t: number) => book.variations.filter((v) => v.tier <= t).length;
-    expect(atTier(1)).toBe(2); // advance, exchange
-    expect(atTier(2)).toBe(3); // + classical
-    expect(atTier(3)).toBe(4); // + panov
-    expect(atTier(4)).toBe(8); // + 4 sidelines
+  it("assigns variations to difficulty tiers (the gauntlet's grouping bands)", () => {
+    const perTier = (t: number) => book.variations.filter((v) => v.tier === t).length;
+    expect(perTier(1)).toBe(2); // advance, exchange
+    expect(perTier(2)).toBe(1); // classical
+    expect(perTier(3)).toBe(1); // panov
+    expect(perTier(4)).toBe(4); // fantasy, reti-nf3, two-knights, sideline-c4
   });
 });
 
 describe("perfect play across the full repertoire", () => {
-  it("wins the top-tier gauntlet covering every variation", () => {
-    const run = new Run(book, { tier: MAX_TIER, rng: makeRng(7) });
+  it("traverses every tier, covers every variation, and wins the run", () => {
+    const run = new Run(book, { rng: makeRng(7) });
     const visited = new Set<string>();
+    const tiers = new Set<number>();
     let guard = 0;
     while (run.view().status === "awaiting-move") {
       visited.add(run.view().variation!.id);
+      tiers.add(run.view().tier);
       run.submit(correct(run));
       if (++guard > 500) throw new Error("run did not terminate");
     }
     expect(run.view().status).toBe("won");
     expect(visited.size).toBe(8);
+    expect([...tiers].sort()).toEqual([1, 2, 3, 4]); // every tier was played, in order
   });
 });
 
@@ -58,7 +61,7 @@ describe("Exchange does not drift into the Panov (defining-move exclusion)", () 
 
     const whiteFourthMoves = new Set<string>();
     for (let seed = 1; seed <= 80; seed++) {
-      const run = new Run(book, { tier: MAX_TIER, rng: makeRng(seed) });
+      const run = new Run(book, { rng: makeRng(seed) });
       if (run.view().variation?.id !== "exchange") continue;
       run.submit("c6");
       run.submit("d5"); // engine forces exd5 -> Black to move

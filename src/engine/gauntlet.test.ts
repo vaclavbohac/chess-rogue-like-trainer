@@ -7,33 +7,32 @@ import { makeRng } from "./rng";
 const book = compileBook(FIXTURE_TREE);
 
 describe("buildGauntlet", () => {
-  it("covers exactly the variations unlocked at the tier (no more, no less)", () => {
-    const t1 = buildGauntlet(book, 1, makeRng(1)).map((v) => v.id).sort();
-    expect(t1).toEqual(["advance", "exchange"]);
-
-    const t2 = buildGauntlet(book, 2, makeRng(1)).map((v) => v.id).sort();
-    expect(t2).toEqual(["advance", "classical", "exchange"]);
+  it("covers every variation exactly once (total coverage)", () => {
+    const g = buildGauntlet(book, makeRng(1));
+    expect(g.map((v) => v.id).sort()).toEqual(["advance", "classical", "exchange"]);
+    expect(new Set(g.map((v) => v.id)).size).toBe(g.length);
   });
 
-  it("includes every unlocked variation exactly once (coverage guarantee)", () => {
-    const g = buildGauntlet(book, 2, makeRng(5));
-    expect(g.length).toBe(3);
-    expect(new Set(g.map((v) => v.id)).size).toBe(3);
+  it("groups by tier ascending (tiers are non-decreasing along the gauntlet)", () => {
+    for (const seed of [1, 2, 3, 4, 5, 6, 7, 8]) {
+      const g = buildGauntlet(book, makeRng(seed));
+      const tiers = g.map((v) => v.tier);
+      expect(tiers).toEqual([...tiers].sort((a, b) => a - b));
+      // Tier 1 (advance + exchange) first, the tier-2 classical last.
+      expect(new Set([g[0]!.id, g[1]!.id])).toEqual(new Set(["advance", "exchange"]));
+      expect(g[g.length - 1]!.id).toBe("classical");
+    }
   });
 
-  it("orders deterministically per seed and varies across seeds", () => {
-    const a = buildGauntlet(book, 2, makeRng(11)).map((v) => v.id);
-    const b = buildGauntlet(book, 2, makeRng(11)).map((v) => v.id);
+  it("shuffles within a tier deterministically per seed, varying across seeds", () => {
+    const a = buildGauntlet(book, makeRng(11)).map((v) => v.id);
+    const b = buildGauntlet(book, makeRng(11)).map((v) => v.id);
     expect(a).toEqual(b);
 
-    // At least one seed should produce a different order than another.
-    const orders = new Set(
-      [1, 2, 3, 4, 5, 6, 7, 8].map((s) =>
-        buildGauntlet(book, 2, makeRng(s))
-          .map((v) => v.id)
-          .join(","),
-      ),
+    // The two tier-1 variations should appear in both possible orders across seeds.
+    const firsts = new Set(
+      [1, 2, 3, 4, 5, 6, 7, 8].map((s) => buildGauntlet(book, makeRng(s))[0]!.id),
     );
-    expect(orders.size).toBeGreaterThan(1);
+    expect(firsts).toEqual(new Set(["advance", "exchange"]));
   });
 });
